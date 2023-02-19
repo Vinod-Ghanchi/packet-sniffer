@@ -91,3 +91,97 @@ def printPacketsV4(filter, data, raw_data):
         src_port, dest_port, length, data = udp_seg(data)
         print('*****UDP Segment*****')
         print('Source Port: {}\nDestination Port: {}\nLength: {}'.format(src_port, dest_port, length))
+
+def printPacketsV6(filter, nextProto, newPacket):
+    remainingPacket = ""
+
+    if (nextProto == 'ICMPv6' and (len(filter) == 0 or filter[2] == "ICMPv6")):
+        remainingPacket = icmpv6Header(newPacket)
+    elif (nextProto == 'TCP' and (len(filter) == 0 or filter[2] == "TCP")):
+        remainingPacket = tcpHeader(newPacket)
+    elif (nextProto == 'UDP' and (len(filter) == 0 or filter[2] == "UDP")):
+        remainingPacket = udpHeader(newPacket)
+
+    return remainingPacket
+
+
+def tcpHeader(newPacket):
+    # 2 unsigned short,2unsigned Int,4 unsigned short. 2byt+2byt+4byt+4byt+2byt+2byt+2byt+2byt==20byts
+    packet = struct.unpack("!2H2I4H", newPacket[0:20])
+    srcPort = packet[0]
+    dstPort = packet[1]
+    sqncNum = packet[2]
+    acknNum = packet[3]
+    dataOffset = packet[4] >> 12
+    reserved = (packet[4] >> 6) & 0x003F
+    tcpFlags = packet[4] & 0x003F 
+    urgFlag = tcpFlags & 0x0020 
+    ackFlag = tcpFlags & 0x0010 
+    pushFlag = tcpFlags & 0x0008  
+    resetFlag = tcpFlags & 0x0004 
+    synFlag = tcpFlags & 0x0002 
+    finFlag = tcpFlags & 0x0001 
+    window = packet[5]
+    checkSum = packet[6]
+    urgPntr = packet[7]
+
+    print ("*******************TCP***********************")
+    print ("\tSource Port: "+str(srcPort) )
+    print ("\tDestination Port: "+str(dstPort) )
+    print ("\tSequence Number: "+str(sqncNum) )
+    print ("\tAck. Number: "+str(acknNum) )
+    print ("\tData Offset: "+str(dataOffset) )
+    print ("\tReserved: "+str(reserved) )
+    print ("\tTCP Flags: "+str(tcpFlags) )
+
+    if(urgFlag == 32):
+        print ("\tUrgent Flag: Set")
+    if(ackFlag == 16):
+        print ("\tAck Flag: Set")
+    if(pushFlag == 8):
+        print ("\tPush Flag: Set")
+    if(resetFlag == 4):
+        print ("\tReset Flag: Set")
+    if(synFlag == 2):
+        print ("\tSyn Flag: Set")
+    if(finFlag == True):
+        print ("\tFin Flag: Set")
+
+    print ("\tWindow: "+str(window))
+    print ("\tChecksum: "+str(checkSum))
+    print ("\tUrgent Pointer: "+str(urgPntr))
+    print (" ")
+
+    packet = packet[20:]
+    return packet
+
+
+def udpHeader(newPacket):
+    packet = struct.unpack("!4H", newPacket[0:8])
+    srcPort = packet[0]
+    dstPort = packet[1]
+    lenght = packet[2]
+    checkSum = packet[3]
+
+    print ("*******************UDP***********************")
+    print ("\tSource Port: "+str(srcPort))
+    print ("\tDestination Port: "+str(dstPort))
+    print ("\tLenght: "+str(lenght))
+    print ("\tChecksum: "+str(checkSum))
+    print (" ")
+
+    packet = packet[8:]
+    return packet
+
+
+def icmpv6Header(data):
+    ipv6_icmp_type, ipv6_icmp_code, ipv6_icmp_chekcsum = struct.unpack(
+        ">BBH", data[:4])
+
+    print ("*******************ICMPv6***********************")
+    print ("\tICMPv6 type: %s" % (ipv6_icmp_type))
+    print ("\tICMPv6 code: %s" % (ipv6_icmp_code))
+    print ("\tICMPv6 checksum: %s" % (ipv6_icmp_chekcsum))
+
+    data = data[4:]
+    return data
